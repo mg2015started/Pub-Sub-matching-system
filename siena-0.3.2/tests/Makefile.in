@@ -1,0 +1,96 @@
+#
+#  This file is part of Siena, a wide-area event notification system.
+#  See http://www.cs.colorado.edu/serl/dot/siena.html
+#
+#  Author: Antonio Carzaniga <carzanig@cs.colorado.edu>
+#  See the file AUTHORS for full details. 
+#
+#  Copyright (C) 1998-1999 University of Colorado
+#
+#  This program is free software; you can redistribute it and/or
+#  modify it under the terms of the GNU General Public License
+#  as published by the Free Software Foundation; either version 2
+#  of the License, or (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307,
+#  USA, or send email to serl@cs.colorado.edu.
+#
+#
+# $Id: Makefile.in,v 1.1 2002/06/10 19:57:03 carzanig Exp $
+#
+SHELL		= /bin/sh
+top_srcdir	= @top_srcdir@
+srcdir		= @srcdir@
+top_incdir	= $(top_srcdir)/include
+
+VPATH		= $(srcdir)
+@SET_MAKE@
+
+.SUFFIXES:
+.SUFFIXES: .cc .o
+
+AR		= ar
+ARFLAGS		= rc
+RANLIB		= @RANLIB@
+CXX		= @CXX@
+#
+CPPFLAGS	= @CPPFLAGS@ -I.. -I$(srcdir) -I$(top_incdir)
+CXXFLAGS	= $(CPPFLAGS) @CXXFLAGS@
+LDFLAGS		= @LDFLAGS@ -L..
+LIBS		= @LIBS@ -lsiena
+#
+INCS		= 
+SRCS		= object_of_interest.cc interested_party.cc \
+		  www.cc httpd.cc echo.cc
+DOCS		=
+MISC		= 
+OBJS		= 
+PROGS		= www httpd echo
+
+all: object_of_interest interested_party www httpd echo 
+
+.cc.o:	
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+.cc:	
+	$(CXX) -o $@ $< $(CXXFLAGS) $(LDFLAGS) $(LIBS)
+
+.PHONY: all install uninstall clean distclean maintainerclean depend depend.mk
+
+install:
+uninstall:
+
+clean:
+	/bin/rm -f core *.o $(OBJS) www
+
+distclean: clean
+	/bin/rm -f Makefile
+
+maintainerclean: distclean
+
+#
+# autoconf stuff
+#
+Makefile: Makefile.in ../config.status
+	cd .. && ./config.status
+
+../config.status: $(top_srcdir)/configure
+	cd .. && ./config.status --recheck
+
+#
+# automatic (C/C++) dependencies 
+#
+depend: $(INCS) depend.mk
+depend.mk: $(SRCS)
+	echo '# --- AUTOMATIC DEPENDENCIES ---' >> Makefile
+	$(CXX) -MM $(CPPFLAGS) $^ >> Makefile
+#
+# dependencies will be appended here if you `$(MAKE) depend'
+#

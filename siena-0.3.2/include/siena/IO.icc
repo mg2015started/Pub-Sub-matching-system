@@ -1,0 +1,9 @@
+// -*-C++-*-
+//
+// $Id: IO.icc,v 1.1 2002/06/10 19:57:52 carzanig Exp $
+//
+inline IOError::IOError(int e = 0): errno_value(e) {};
+
+inline RWError::RWError(size_t s = 0, int e = 0): 
+    IOError(e), chars_done(s) {};
+

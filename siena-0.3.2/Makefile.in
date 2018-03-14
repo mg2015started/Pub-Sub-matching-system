@@ -1,0 +1,209 @@
+#
+#  This file is part of Siena, a wide-area event notification system.
+#  See http://www.cs.colorado.edu/serl/dot/siena.html
+#
+#  Author: Antonio Carzaniga <carzanig@cs.colorado.edu>
+#  See the file AUTHORS for full details. 
+#
+#  Copyright (C) 1998-1999 University of Colorado
+#
+#  This program is free software; you can redistribute it and/or
+#  modify it under the terms of the GNU General Public License
+#  as published by the Free Software Foundation; either version 2
+#  of the License, or (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307,
+#  USA, or send email to serl@cs.colorado.edu.
+#
+#
+# $Id: Makefile.in,v 1.2 2002/06/12 15:13:18 carzanig Exp $
+#
+top_srcdir	= @top_srcdir@
+srcdir		= @srcdir@
+top_incdir	= $(top_srcdir)/include
+sienainc	= $(top_incdir)/siena
+#
+prefix		= @prefix@
+libdir		= $(prefix)/lib
+incdir		= $(prefix)/include
+docdir		= $(prefix)/doc
+#
+VPATH		= $(srcdir)
+#
+@SET_MAKE@
+#
+SHELL		= /bin/sh
+RM		= @RM@
+TAR		= @TAR@
+AR		= @AR@
+ARFLAGS		= rc
+RANLIB		= @RANLIB@
+CXX		= @CXX@
+INSTALL		= @INSTALL@
+MKPATH		= @MKPATH@
+DOCPP		= @DOCPP@
+#
+CPPFLAGS	= @CPPFLAGS@ -I. -I$(top_incdir)
+CXXFLAGS	= $(CPPFLAGS) @CXXFLAGS@
+LDFLAGS		= @LDFLAGS@
+LIBS		= @LIBS@
+
+#
+SYSTEM		= siena
+VERSION		= @VERSION@
+#
+PACKAGE		= $(SYSTEM)-$(VERSION)
+# 
+CXXDOCDIR	= doc
+#
+CONFIGS		= configure install-sh mkinstalldirs \
+		configure.in sienaconf.in aclocal.m4
+
+MAKES		= Makefile.in
+
+DOCS		= AUTHORS LICENSE README VERSION index.html srcinstall.html
+FOOTER		= footer.html
+HEADERS		= indexHeader.html hierHeader.html classHeader.html
+DOCPKG		= c++doc.tar.gz
+TESTS		= tests/Makefile.in tests/echo.cc tests/httpd.cc	\
+		tests/www.cc tests/interested_party.cc			\
+		tests/object_of_interest.cc
+EXAMPLES	= tests/object_of_interest.cc tests/interested_party.cc
+INCLUDES	= include/siena/IO.h include/siena/SENP.h		\
+		include/siena/SienaIO.h include/siena/Socket.h		\
+		include/siena/Monitor.h include/siena/Siena.h		\
+		include/siena/SimpleSiena.h include/siena/URI.h		\
+		include/siena.h 
+USRINCS		= include/siena.h
+CONFINCS	= sienaconf.h 
+INLINES		= include/siena/IO.icc include/siena/URI.icc		\
+		include/siena/SENP.icc include/siena/Siena.icc		\
+		include/siena/Socket.icc
+SOURCES		= Monitor.cc SienaIO.cc URI.cc SENP.cc SimpleSiena.cc	\
+		Siena.cc Socket.cc 
+#
+SRCDIST		= $(CONFIGS) $(MAKES) $(INCLUDES) $(INLINES) $(SOURCES) \
+		$(DOCS) INSTALL $(FOOTER) $(HEADERS) $(TESTS) $(DOCPKG)
+#
+OBJS		= SENP.o Siena.o SienaIO.o SimpleSiena.o Socket.o URI.o \
+		Monitor.o
+#
+.PHONY: default all test srcpkg binpkg runcppdoc unpackdoc \
+	install uninstall clean distclean depend depend.mk
+
+.SUFFIXES:
+.SUFFIXES: .cc .o
+
+default: libsiena.a
+all: default srcpkg binpkg
+
+.cc.o:
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+libsiena.a: $(OBJS)
+	$(RM) -f libsiena.a
+	$(AR) $(ARFLAGS) libsiena.a $(OBJS)
+	$(RANLIB) libsiena.a
+
+#							--- Documentation
+%.inc: $(srcdir)/%.html
+	cp $< $@
+
+# configure replaces @makedocpp@ with either `rundocpp' or `'
+# depending on the availability of doc++
+#
+$(srcdir)/$(DOCPKG): @makedocpp@
+
+rundocpp: indexHeader.inc hierHeader.inc classHeader.inc $(srcdir)/$(FOOTER)
+rundocpp: $(INCLUDES)
+	$(DOCPP) -m -H -B $(srcdir)/$(FOOTER) -d $(CXXDOCDIR) $^
+	$(TAR) cf - $(CXXDOCDIR) | gzip > $(srcdir)/$(DOCPKG)
+
+install: libsiena.a $(srcdir)/$(DOCPKG)
+	$(MKPATH) $(prefix) $(incdir) $(incdir)/siena $(libdir)
+	gzip -dc $(srcdir)/$(DOCPKG) | (cd $(prefix) && $(TAR) xf -)
+	cd $(srcdir) && \
+		$(INSTALL) -m 444 $(DOCS) $(EXAMPLES) $(prefix) ; \
+		$(INSTALL) -m 444 $(INCLUDES) $(INLINES) $(incdir)/siena ; \
+		$(INSTALL) -m 444 $(USRINCS) $(incdir);
+	$(INSTALL) -m 444 $(CONFINCS) $(incdir)
+	$(INSTALL) -m 444 libsiena.a $(libdir) 
+
+test: libsiena.a
+	cd tests && $(MAKE) all
+
+clean:
+	$(RM) -rf core *.o $(OBJS) *.inc libsiena.a \
+		*.inc $(CXXDOCDIR) $(PACKAGE).tar.gz $(PACKAGE)-bin.tar.gz
+
+distclean: clean
+	$(RM) -f Makefile sienaconf.h config.status config.cache config.log
+
+maintainerclean: distclean
+	$(RM) -f $(srcdir)/$(DOCPKG)
+#
+# source distribution
+#
+srcpkg: $(PACKAGE).tar.gz
+#
+$(PACKAGE).tar.gz:
+	$(RM) -rf $(PACKAGE)
+	mkdir $(PACKAGE)
+	(cd $(srcdir);tar cf - $(SRCDIST))|(cd $(PACKAGE);tar xf -)
+	$(TAR) cf - $(PACKAGE) | gzip > $@
+	$(RM) -rf $(PACKAGE)
+
+#
+# binary distribution
+#
+binpkg: $(PACKAGE)-bin.tar.gz
+#
+$(PACKAGE)-bin.tar.gz:
+	$(RM) -rf $(PACKAGE)
+	$(MAKE) install prefix=`pwd`/$(PACKAGE)
+	$(TAR) cf - $(PACKAGE) | gzip > $@
+	$(RM) -rf $(PACKAGE)
+#
+checkout:
+	-cd $(srcdir) && co $(COFLAGS) $(SRCDIST) < /dev/null
+
+#
+# autoconf stuff
+#
+$(top_srcdir)/configure: $(top_srcdir)/configure.in
+	cd $(top_srcdir) && autoconf
+
+sienaconf.h: $(top_srcdir)/VERSION $(top_srcdir)/sienaconf.in \
+		config.status
+	./config.status
+
+Makefile: $(top_srcdir)/VERSION $(srcdir)/Makefile.in config.status
+	./config.status
+
+config.status: $(top_srcdir)/configure
+	./config.status --recheck
+#
+# automatic (C/C++) dependencies 
+#
+# the right way of doing this would be:
+# depend: $(INCLUDES) $(INLINES) depend.mk
+# depend.mk: $(SOURCES)
+# 	$(CXX) -M $(CPPFLAGS) $^ >> Makefile
+#
+# but unfortunately $^ is not a very portable macro
+#
+depend: $(SOURCES) $(INCLUDES) $(INLINES) 
+	echo '# --- AUTOMATIC DEPENDENCIES ---' >> Makefile
+	for f in $(SOURCES); do \
+	$(CXX) -M $(CPPFLAGS) $(srcdir)/$$f >> Makefile ; \
+	done
+#
+# dependencies will be appended here if you `$(MAKE) depend'
+#

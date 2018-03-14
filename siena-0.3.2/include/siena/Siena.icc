@@ -1,0 +1,148 @@
+// -*- C++ -*-
+//
+//  This file is part of Siena, a wide-area event notification system.
+//  See http://www.cs.colorado.edu/serl/dot/siena.html
+//
+//  Author: Antonio Carzaniga <carzanig@cs.colorado.edu>
+//  See the file AUTHORS for full details. 
+//
+//  Copyright (C) 1998-1999 University of Colorado
+//
+//  This program is free software; you can redistribute it and/or
+//  modify it under the terms of the GNU General Public License
+//  as published by the Free Software Foundation; either version 2
+//  of the License, or (at your option) any later version.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program; if not, write to the Free Software
+//  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307,
+//  USA, or send email to serl@cs.colorado.edu.
+//
+//
+// $Id: Siena.icc,v 1.1 2002/06/10 19:57:52 carzanig Exp $
+//
+#include <siena/Siena.h>
+
+inline AttributeValue::AttributeValue(): _type(Siena_null) {};
+inline AttributeValue::AttributeValue(const string &s):
+        _type(Siena_string), str(new string(s)) {};
+inline AttributeValue::AttributeValue(const char *s):
+        _type(Siena_string), str(new string(s)) {};
+inline AttributeValue::AttributeValue(int x): _type(Siena_integer), num(x) {};
+inline AttributeValue::AttributeValue(bool x): _type(Siena_bool), bln(x) {};
+inline AttributeValue::AttributeValue(double x): _type(Siena_double), dbl(x) {};
+
+inline AttributeValue & AttributeValue::operator = (const string &s) {
+    if (_type == Siena_string && str != NULL) {
+        *str = s;
+    } else {
+        _type = Siena_string;
+        str = new string(s);
+    }
+    return *this;
+}
+
+inline AttributeValue & AttributeValue::operator = (const char *s) {
+    if (_type == Siena_string && str != NULL) {
+        *str = s;
+    } else {
+        _type = Siena_string;
+        str = new string(s);
+    }
+    return *this;
+}
+
+inline AttributeValue & AttributeValue::operator = (int i) {
+    if (_type == Siena_string && str != NULL) {
+        delete(str);
+    }
+    _type = Siena_integer;
+    num = i;
+    return *this;
+}
+
+inline AttributeValue & AttributeValue::operator = (bool b) {
+    if (_type == Siena_string && str != NULL) {
+        delete(str);
+    }
+    _type = Siena_bool;
+    bln = b;
+    return *this;
+}
+
+inline AttributeValue & AttributeValue::operator = (double d) {
+    if (_type == Siena_string && str != NULL) {
+        delete(str);
+    }
+    _type = Siena_double;
+    dbl = d;
+    return *this;
+}
+
+inline bool AttributeValue::operator == (const AttributeValue &a) const {
+    return apply_operator(Siena_eq, *this, a);
+}
+
+inline bool AttributeValue::operator < (const AttributeValue &a) const {
+    return apply_operator(Siena_lt, *this, a);
+}
+
+inline BadType::BadType(SienaType t): type(t) {};
+
+inline SienaType AttributeValue::type() const { return _type; }
+
+inline int & AttributeValue::int_value() {
+    if (_type == Siena_integer) return num;
+    else throw BadType(_type);
+}
+inline bool & AttributeValue::bool_value() {
+    if (_type == Siena_bool) return bln;
+    else throw BadType(_type);
+}
+inline string & AttributeValue::string_value() {
+    if (_type == Siena_string && str != NULL) return *str;
+    else throw BadType(_type);
+}
+inline double & AttributeValue::double_value() {
+    if (_type == Siena_double) return dbl;
+    else throw BadType(_type);
+}
+inline const int & AttributeValue::int_value() const {
+    if (_type == Siena_integer) return num;
+    else throw BadType(_type);
+}
+inline const bool & AttributeValue::bool_value() const {
+    if (_type == Siena_bool) return bln;
+    else throw BadType(_type);
+}
+inline const string & AttributeValue::string_value() const {
+    if (_type == Siena_string && str != NULL) return *str;
+    else throw BadType(_type);
+}
+inline const double & AttributeValue::double_value() const {
+    if (_type == Siena_double) return dbl;
+    else throw BadType(_type);
+}
+inline AttributeValue::operator int () const {
+    if (_type == Siena_integer) return num;
+    else throw BadType(_type);
+}
+inline AttributeValue::operator string () const {
+    if (_type == Siena_string && str != NULL) return *str;
+    else throw BadType(_type);
+}
+inline AttributeValue::operator bool () const {
+    if (_type == Siena_bool) return bln;
+    else throw BadType(_type);
+}
+inline AttributeValue::operator double () const {
+    if (_type == Siena_double) return dbl;
+    else throw BadType(_type);
+}
+
+inline BadOperator::BadOperator(SienaOperator o): op(o) {};

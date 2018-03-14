@@ -1,0 +1,170 @@
+#
+#  This file is part of Siena, a wide-area event notification system.
+#  See http://www.cs.colorado.edu/serl/siena/
+#
+#  Author: Antonio Carzaniga <carzanig@cs.colorado.edu>
+#  See the file AUTHORS for full details. 
+#
+#  Copyright (C) 1998-2002 University of Colorado
+#
+#  This program is free software; you can redistribute it and/or
+#  modify it under the terms of the GNU General Public License
+#  as published by the Free Software Foundation; either version 2
+#  of the License, or (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307,
+#  USA, or send email to serl@cs.colorado.edu.
+#
+#
+# $Id: Makefile.in,v 1.4 2002/06/12 22:36:00 carzanig Exp $
+#
+top_srcdir	= @top_srcdir@
+srcdir		= @srcdir@
+prefix		= @prefix@
+bindir		= $(prefix)/bin
+#
+VPATH		= $(srcdir)
+#
+@SET_MAKE@
+#
+SHELL		= /bin/sh
+RM		= @RM@
+TAR		= @TAR@
+CXX		= @CXX@
+INSTALL		= @INSTALL@
+MKPATH		= @MKPATH@
+#
+CPPFLAGS	= @CPPFLAGS@ -I. -I$(srcdir) \
+		  @siena_include@ @gdbm_include@ @pthread_include@
+CXXFLAGS	= $(CPPFLAGS) -g @CXXFLAGS@
+LDFLAGS		= @LDFLAGS@ @siena_libdir@ @gdbm_libdir@ @pthread_libdir@
+LIBS		= @LIBS@ @siena_libs@ @gdbm_libs@ @pthread_libs@
+
+# 
+# System description
+#
+VERSION = @VERSION@
+SYSTEM	= sienaserver
+
+PACKAGE	= $(SYSTEM)-$(VERSION)
+
+CONFIGS = configure install-sh configure.in aclocal.m4 sienaserverconf.in
+MAKES	= Makefile.in
+DOCS	= README AUTHORS LICENSE VERSION index.html srcinstall.html
+SOURCES	= CoveringRelations.cc Db.cc EventServer.cc PThreads.cc main.cc 
+INCLUDES = CoveringRelations.h Db.h PThreads.h EventServer.h set_util.h
+INLINES	= CoveringRelations.icc  PThreads.icc
+
+PROGS	= siena
+
+TESTS	= tests/Makefile.in tests/pingsiena.cc tests/test_integer.sh	\
+	tests/base.sh tests/sender.cc tests/test_net.sh			\
+	tests/client.cc tests/test_any.sh tests/test_net1.sh		\
+	tests/compare.cc tests/test_cover.sh tests/test_string.sh	\
+	tests/config.in tests/test_cover_direct.sh tests/topology1.sh	\
+	tests/covers.cc tests/test_db.sh tests/topology2.sh		\
+	tests/killtopology.sh tests/test_float.sh
+
+OBJS	= Db.o PThreads.o CoveringRelations.o EventServer.o main.o
+
+SRCDIST = $(DOCS) $(CONFIGS) $(MAKES) \
+	$(INCLUDES) $(INLINES) $(SOURCES) $(TESTS)
+
+.PHONY: default all install clean distclean maintainerclean depend depend.mk \
+	srcpkg binpkg 
+
+.SUFFIXES:
+.SUFFIXES: .cc .o
+
+default: $(PROGS)
+
+all: default srcpkg
+
+.cc.o:	
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+test: siena
+	cd tests && $(MAKE) all
+
+install: $(PROGS)
+	$(MKPATH) $(bindir)
+	$(INSTALL) -m 755 siena $(bindir)
+
+siena: $(OBJS)
+	$(CXX) -o $@ $(OBJS) $(LDFLAGS) $(LIBS)
+
+clean:
+	$(RM) -f core *.o $(OBJS) siena $(PACKAGE).tar.gz $(PACKAGE)-bin.tar.gz
+
+distclean: clean
+	$(RM) -f Makefile sienaserverconf.h \
+		config.status config.cache config.log
+
+maintainerclean: distclean
+#
+# source distribution
+#
+srcpkg: $(PACKAGE).tar.gz
+#
+$(PACKAGE).tar.gz:
+	$(RM) -rf $(PACKAGE)
+	mkdir $(PACKAGE)
+	(cd $(srcdir);tar cf - $(SRCDIST))|(cd $(PACKAGE);tar xf -)
+	tar cf - $(PACKAGE) | gzip > $@
+	$(RM) -rf $(PACKAGE)
+
+#
+# binary distribution
+#
+binpkg: $(PACKAGE)-bin.tar.gz
+#
+$(PACKAGE)-bin.tar.gz:
+	$(RM) -rf $(PACKAGE)
+	$(MAKE) install prefix=`pwd`/$(PACKAGE)
+	tar cf - $(PACKAGE) | gzip > $@
+	$(RM) -rf $(PACKAGE)
+#
+checkout:
+	-cd $(srcdir) && co $(COFLAGS) $(SRCDIST) < /dev/null
+
+#
+# autoconf stuff
+#
+$(top_srcdir)/configure: $(top_srcdir)/configure.in $(top_srcdir)/aclocal.m4
+	cd $(top_srcdir) && autoconf
+
+sienaserverconf.h: $(top_srcdir)/VERSION $(top_srcdir)/sienaserverconf.in \
+		config.status
+	./config.status
+
+Makefile: $(top_srcdir)/VERSION $(srcdir)/Makefile.in config.status
+	./config.status
+
+config.status: $(top_srcdir)/configure
+	./config.status --recheck
+#
+# automatic (C/C++) dependencies 
+#
+# the right way of doing this would be:
+# depend: $(INCLUDES) $(INLINES) depend.mk
+# depend.mk: $(SOURCES)
+# 	$(CXX) -M $(CPPFLAGS) $^ >> Makefile
+#
+# but unfortunately $^ is not a very portable macro
+#
+depend: $(SOURCES) $(INCLUDES) $(INLINES) 
+	echo '# --- AUTOMATIC DEPENDENCIES ---' >> Makefile
+	for f in $(SOURCES); do \
+	$(CXX) -M $(CPPFLAGS) $(srcdir)/$$f >> Makefile ; \
+	done
+#
+# dependencies will be appended here if you `$(MAKE) depend'
+#
+

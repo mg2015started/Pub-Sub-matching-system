@@ -1,0 +1,72 @@
+// -*- C++ -*-
+//
+//  This file is part of Siena, a wide-area event notification system.
+//  See http://www.cs.colorado.edu/serl/dot/siena.html
+//
+//  Author: Antonio Carzaniga <carzanig@cs.colorado.edu>
+//  See the file AUTHORS for full details. 
+//
+//  Copyright (C) 1998-1999 University of Colorado
+//
+//  This program is free software; you can redistribute it and/or
+//  modify it under the terms of the GNU General Public License
+//  as published by the Free Software Foundation; either version 2
+//  of the License, or (at your option) any later version.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program; if not, write to the Free Software
+//  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307,
+//  USA, or send email to serl@cs.colorado.edu.
+//
+//
+// $Id: httpd.cc,v 1.2 2002/11/22 17:52:35 carzanig Exp $
+//
+#include <string>
+#include <exception>
+#include <iostream>
+#include <cstdlib>
+
+using namespace std;
+
+#include <siena/Socket.h>
+
+int main(int argc, char *argv[])
+{
+    INAddress::port_type p;
+    try {
+	if (argc > 1) {
+	    p = atoi(argv[1]);
+	} else {
+	    p = 8080;
+	}
+	
+	string l;
+	TCPPort port(p);
+	TCPSocket s;
+	while(1) {
+	    s = port.accept();
+
+	    while(getline(s, l) && l != "\r")
+		cout << l << endl;
+	    if (l == "\r") {
+		cout << "--Ok--" << endl;
+	    
+		s << "HTTP/1.0 200 OK\r" << endl;
+		s << "Server: test for Siena Socket library\r" << endl;
+		s << "Content-Type: text/html\r\n\r\n" << endl;
+		s << "<HTML><HEAD><TITLE>Test for Siena's Socket library</TITLE></HEAD>" << endl;
+		s << "<BODY>This is simply a test for Siena's Socket library</BODY></HTML>" << endl;
+	    } else {
+		cout << "bad request." << endl;
+	    }
+	    s.close();
+	}
+    } catch (exception &ex) {
+	cerr << ex.what() << endl;
+    }
+}

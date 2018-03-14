@@ -1,0 +1,99 @@
+##
+##  This file is part of Siena, a wide-area event notification system.
+##  See http://www.cs.colorado.edu/serl/dot/siena.html
+##
+##  Author: Antonio Carzaniga <carzanig@cs.colorado.edu>
+##  See the file AUTHORS for full details. 
+##
+##  Copyright (C) 1998-1999 University of Colorado
+##
+##  This program is free software; you can redistribute it and/or
+##  modify it under the terms of the GNU General Public License
+##  as published by the Free Software Foundation; either version 2
+##  of the License, or (at your option) any later version.
+##
+##  This program is distributed in the hope that it will be useful,
+##  but WITHOUT ANY WARRANTY; without even the implied warranty of
+##  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+##  GNU General Public License for more details.
+##
+##  You should have received a copy of the GNU General Public License
+##  along with this program; if not, write to the Free Software
+##  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307,
+##  USA, or send email to serl@cs.colorado.edu.
+## 
+## 
+## $Id: configure.in,v 1.2 2002/06/12 15:06:53 carzanig Exp $
+##
+AC_INIT(VERSION)
+echo //
+echo // Configuring Siena...
+echo //
+echo // Please contact Antonio Carzaniga \<carzanig@cs.colorado.edu\>
+echo // if you have problems configuring or compiling Siena
+echo //
+AC_CONFIG_HEADER(sienaconf.h:sienaconf.in)
+AC_PREFIX_DEFAULT(/opt)
+#
+# first of all let's define VERSION
+#
+AC_MSG_CHECKING(Siena version)
+VERSION=`cat $srcdir/VERSION`
+AC_DEFINE_UNQUOTED(SIENAVERSION, "${VERSION}")
+AC_SUBST(VERSION)
+AC_MSG_RESULT($VERSION)
+
+AC_PROG_MAKE_SET
+AC_PROG_INSTALL
+
+AC_PROG_CXX
+AC_PATH_PROG(AR, ar, $FALSE)
+AC_PATH_PROG(RM, rm, $FALSE)
+AC_PATH_PROG(TAR, tar, $FALSE)
+
+AC_LANG_CPLUSPLUS
+AC_ANTO_CXX_NAMESPACES
+AC_ANTO_CXX_EXCEPTIONS
+if test "$ac_cv_anto_cxx_exceptions" != yes; then
+    AC_MSG_ERROR(Siena needs a c++ that handles exceptions!)
+fi
+
+AC_PROG_INSTALL
+
+AC_PROG_RANLIB
+
+AC_ANTO_MKPATH(AC_MSG_ERROR(need a method for creating paths))
+
+AC_ANTO_SEARCH_LIBS(gethostbyname, nsl socket)
+AC_ANTO_SEARCH_LIBS(socket, socket)
+
+AC_ANTO_TYPE(ssize_t, long)
+AC_ANTO_TYPE(socklen_t, int, [#include<sys/socket.h>])
+AC_ANTO_TYPE(in_addr_t, unsigned int, [
+#include<sys/socket.h>
+#include<netinet/in.h>])
+AC_ANTO_TYPE(in_port_t, unsigned short, [
+#include<sys/socket.h>
+#include<netinet/in.h>])
+
+dnl 
+dnl finds doc++
+dnl
+AC_ARG_WITH(docpp,[  --with-docpp=prog  uses prog as the doc++ document generator], DOCPP="$withval")
+AC_CHECK_PROGS(DOCPP, doc++)
+if test -z "$DOCPP"; then
+	AC_MSG_WARN(No valid doc++.)
+	makedocpp=
+else
+	#
+	# I should also check whether $DOCPP actualy works...
+	#
+	AC_SUBST(DOCPP)
+	makedocpp=rundocpp
+fi
+AC_SUBST(makedocpp)
+dnl 
+AC_OUTPUT(Makefile tests/Makefile)
+echo //
+echo // now you can type \`make\' to compile Siena... good luck!
+echo //

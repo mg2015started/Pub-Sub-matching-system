@@ -1,0 +1,238 @@
+// -*- C++ -*-
+//
+//  This file is part of Siena, a wide-area event notification system.
+//  See http://www.cs.colorado.edu/serl/dot/siena.html
+//
+//  Author: Antonio Carzaniga <carzanig@cs.colorado.edu>
+//  See the file AUTHORS for full details. 
+//
+//  Copyright (C) 1998-1999 University of Colorado
+//
+//  This program is free software; you can redistribute it and/or
+//  modify it under the terms of the GNU General Public License
+//  as published by the Free Software Foundation; either version 2
+//  of the License, or (at your option) any later version.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program; if not, write to the Free Software
+//  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307,
+//  USA, or send email to serl@cs.colorado.edu.
+//
+//
+// $Id: Socket.icc,v 1.2 2002/11/22 17:52:35 carzanig Exp $
+//
+#include <unistd.h>
+
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
+inline INAddress::INAddress() {
+    sin_family = AF_INET;
+    sin_addr.s_addr = INADDR_ANY;
+    sin_port = htons(0);
+};
+
+inline INAddress::INAddress(INAddress::port_type port) {
+    sin_family = AF_INET;
+    sin_addr.s_addr = INADDR_ANY;
+    sin_port = htons(port);
+}
+
+inline INAddress::INAddress(const INAddress &a) {
+    sin_family = AF_INET;
+    sin_addr.s_addr = a.sin_addr.s_addr;
+    sin_port = a.sin_port;
+}
+
+inline INAddress::INAddress(const char * host, 
+			    INAddress::port_type p) {
+    set_host_port(host, p);
+}
+
+inline INAddress::size_type INAddress::size() const {
+    return sizeof(sockaddr_in); 
+}
+
+inline sockaddr_in * INAddress::addr_in() { 
+    return (sockaddr_in *)this; 
+}
+
+inline sockaddr * INAddress::addr() { 
+    return (sockaddr *)this; 
+}
+
+inline const sockaddr_in * INAddress::addr_in() const { 
+    return (sockaddr_in *)this; 
+}
+
+inline const sockaddr * INAddress::addr() const { 
+    return (sockaddr *)this; 
+}
+
+inline INAddress::operator void* () { 
+    return this;
+}
+
+inline INAddress::port_type INAddress::port() const { 
+    return ntohs(sin_port); 
+}
+
+inline INAddress::ip_address_type INAddress::host() const { 
+    return sin_addr.s_addr; 
+}
+
+inline const char * INAddress::hostname() const {
+    return inet_ntoa(sin_addr);
+}
+
+inline INAddress &INAddress::operator = (const INAddress &a) {
+    sin_port = a.sin_port;
+    sin_addr.s_addr  = a.sin_addr.s_addr;
+    return *this;
+}
+
+inline bool INAddress::operator < (const INAddress &x) const {
+    if (sin_addr.s_addr != x.sin_addr.s_addr)
+	return sin_addr.s_addr < x.sin_addr.s_addr;
+    return sin_port < x.sin_port;
+}
+
+inline bool INAddress::operator == (const INAddress &x) const {
+    return sin_addr.s_addr == x.sin_addr.s_addr && sin_port == x.sin_port;
+}
+
+inline SocketRep::SocketRep(): fd(-1), ref_count(0) {}
+
+inline Socket::Socket(): rep(NULL) {}
+inline Socket::Socket(SocketRep * r): rep(r) {
+    if (rep != NULL) ++rep->ref_count;
+}
+
+inline Socket::~Socket() {
+    Socket::close();
+}
+
+inline void Socket::assign(SocketRep *r)
+{
+    if (rep != NULL && --rep->ref_count == 0) delete(rep);
+    rep = r;
+    if (rep != NULL) ++rep->ref_count;
+}
+
+inline void Socket::close() {
+    if (rep != NULL && --rep->ref_count == 0) delete(rep);
+    rep = NULL;
+}
+
+inline int Socket::filedescr() const {
+    return (rep != NULL) ? rep->fd : -1;
+    //
+    // should I throw an exception instead? ...design choice...
+    //
+}
+
+inline TCPSocketRep::TCPSocketRep(): SocketRep(SOCK_STREAM), buf(fd) {}
+
+inline TCPSocketRep::TCPSocketRep(int f): SocketRep(), buf(fd) {
+    fd = f;
+}
+
+inline SocketBuffer::SocketBuffer(int & f): fd(f) 
+{
+    setg(gbuf, gbuf + buffer_size, gbuf + buffer_size);
+    setp(pbuf, pbuf + buffer_size);
+}
+
+inline SocketBuffer::~SocketBuffer() {
+    sync();
+}
+
+inline int SocketBuffer::pbackfail(int c) {
+    return EOF;
+}
+
+inline TCPSocket::TCPSocket(int f): iostream(NULL) {
+    TCPSocket::operator = (f);
+}
+
+inline TCPSocket & TCPSocket::operator = (const TCPSocket &s) {
+    Socket::assign(s.rep);
+    ios::init(&((TCPSocketRep *)rep)->buf);
+    return *this;
+}
+
+inline TCPSocket & TCPSocket::operator = (int f) {
+    TCPSocketRep * new_rep =  new TCPSocketRep(f);
+    Socket::assign(new_rep);
+    ios::init(&new_rep->buf);
+    return *this;
+}
+
+inline TCPSocket::TCPSocket(): iostream(NULL) {};
+
+inline TCPSocket::TCPSocket(const INAddress & addr)
+    : iostream(NULL), Socket(new TCPSocketRep()) {
+    ios::init(&((TCPSocketRep *)rep)->buf);
+    TCPSocket::connect(addr);
+}
+
+inline UDPSocketRep::UDPSocketRep(): SocketRep(SOCK_DGRAM) {};
+inline UDPSocketRep::UDPSocketRep(int f): SocketRep() { fd = f; };
+
+inline UDPSocket::UDPSocket(int f) {
+    UDPSocket::operator = (f);
+}
+
+inline UDPSocket & UDPSocket::operator = (const UDPSocket &s) {
+    Socket::assign(s.rep);
+    return *this;
+}
+
+inline UDPSocket & UDPSocket::operator = (int f) {
+    UDPSocketRep * new_rep =  new UDPSocketRep(f);
+    Socket::assign(new_rep);
+    return *this;
+}
+
+inline UDPSocket::UDPSocket() {};
+
+inline TCPPortRep::TCPPortRep(int f): SocketRep() { fd = f; };
+inline TCPPortRep::TCPPortRep(): SocketRep(SOCK_STREAM) {};
+
+inline TCPPort::TCPPort() {};
+
+inline TCPPort::TCPPort(int f) {
+    TCPPort::operator = (f);
+}
+
+inline TCPPort & TCPPort::operator = (const TCPPort & p)
+{
+    Socket::assign(p.rep);
+    return *this;
+}
+
+inline TCPPort & TCPPort::operator = (int f)
+{
+    Socket::assign(new TCPPortRep(f));
+    return *this;
+}
+
+inline TCPPort::TCPPort(const INAddress::port_type port, 
+			bool reuse, int maxconn)
+    : Socket(new TCPPortRep()) {
+    TCPPort::bind(port, reuse, maxconn);
+}
+
+inline int TCPPort::accept() const {
+    INAddress a;
+    return TCPPort::accept(a);
+}
+
+inline SocketError::SocketError(Type t, int e): 
+    type(t), errno_value(e) {};
+
